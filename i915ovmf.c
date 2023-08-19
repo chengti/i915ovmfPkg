@@ -305,9 +305,34 @@ SetupOpRegion(IN EFI_PCI_IO_PROTOCOL *PciIo,
   }
 
   OpRegion.header = (struct opregion_header *)BytePointer;
-  OpRegion.vbt = (struct vbt_header *)(BytePointer + 1024);
+  OpRegion.acpi = (struct opregion_acpi *)(BytePointer + 0x100);
+  OpRegion.swsci = (struct opregion_swsci *)(BytePointer + 0x200);
+  OpRegion.asle = (struct opregion_asle *)(BytePointer + 0x300);
+  OpRegion.vbt = (struct vbt_header *)(BytePointer + 0x400);
 
-  Status = decodeVBT(&OpRegion, 1024);
+	PRINT_DEBUG(EFI_D_ERROR, " ===CT=== SetupOpRegion(): Opregion: SIGNATURE:%s SIZE:%d MAJOR: 0x%lx MINOR 0x%lx \n",
+					OpRegion.header->signature, OpRegion.header->size, OpRegion.header->over.major, OpRegion.header->over.minor);
+  
+  DumpOpRegionHex (2, 0, 0x100, (VOID*)(OpRegion.header));
+
+	PRINT_DEBUG(EFI_D_ERROR, " === SetupOpRegion(): Opregion MBox-1: Address: 0x%lx \n",(VOID*)(OpRegion.acpi));
+  DumpOpRegionHex (2, 0, 0x100, (VOID*)(OpRegion.acpi));
+
+  PRINT_DEBUG(EFI_D_ERROR, " === SetupOpRegion(): Opregion MBox-2: Address: 0x%lx \n",(VOID*)(OpRegion.swsci));
+  DumpOpRegionHex (2, 0, 0x100, (VOID*)(OpRegion.swsci));
+
+ 	PRINT_DEBUG(EFI_D_ERROR, " === SetupOpRegion(): Opregion MBox-3: Address: 0x%lx \n",(VOID*)(OpRegion.asle));
+  DumpOpRegionHex (2, 0, 0x100, (VOID*)(OpRegion.asle));
+
+	PRINT_DEBUG(EFI_D_ERROR, " === SetupOpRegion(): Opregion: RVDA: 0x%lx RVDS 0x%lx \n",
+					OpRegion.asle->rvda, OpRegion.asle->rvds);
+
+ 	PRINT_DEBUG(EFI_D_ERROR, " === SetupOpRegion(): VBT Address: 0x%lx \n",(VOID*)(BytePointer + OpRegion.asle->rvda));
+
+  DumpOpRegionHex (2, 0, 0x400, (VOID*)(BytePointer + OpRegion.asle->rvda));
+  // OpRegion VBT V2.1
+  OpRegion.vbt = (struct vbt_header *)(BytePointer + OpRegion.asle->rvda);
+  Status = decodeVBT(&OpRegion, OpRegion.asle->rvda);
 
   g_private.opRegion = &OpRegion;
   if (EFI_ERROR(Status))
@@ -950,4 +975,75 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle,
   ASSERT_EFI_ERROR(Status);
 
   return EFI_SUCCESS;
+}
+
+STATIC CONST CHAR8  Hex[] = {
+  '0',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F'
+};
+
+/**
+  Dump some hexadecimal data to the screen.
+
+  @param[in] Indent     How many spaces to indent the output.
+  @param[in] Offset     The offset of the printing.
+  @param[in] DataSize   The size in bytes of UserData.
+  @param[in] UserData   The data to print out.
+**/
+VOID
+EFIAPI
+DumpOpRegionHex (
+  IN UINTN  Indent,
+  IN UINTN  Offset,
+  IN UINTN  DataSize,
+  IN VOID   *UserData
+  )
+{
+  UINT8  *Data;
+
+  CHAR8  Val[50];
+
+  CHAR8  Str[20];
+
+  UINT8  TempByte;
+  UINTN  Size;
+  UINTN  Index;
+
+  Data = UserData;
+  while (DataSize != 0) {
+    Size = 16;
+    if (Size > DataSize) {
+      Size = DataSize;
+    }
+
+    for (Index = 0; Index < Size; Index += 1) {
+      TempByte           = Data[Index];
+      Val[Index * 3 + 0] = Hex[TempByte >> 4];
+      Val[Index * 3 + 1] = Hex[TempByte & 0xF];
+      Val[Index * 3 + 2] = (CHAR8)((Index == 7) ? '-' : ' ');
+      Str[Index]         = (CHAR8)((TempByte < ' ' || TempByte > '~') ? '.' : TempByte);
+    }
+
+    Val[Index * 3] = 0;
+    Str[Index]     = 0;
+    PRINT_DEBUG (EFI_D_ERROR,"%*a%08X: %-48a *%a*\r\n", Indent, "", Offset, Val, Str);
+
+    Data     += Size;
+    Offset   += Size;
+    DataSize -= Size;
+  }
 }

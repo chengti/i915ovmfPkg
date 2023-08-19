@@ -1,4 +1,4 @@
-export WORKSPACE=/change/me
-export PCILOC=chan:ge:me.01
-export PCIID=chan:geme
+export WORKSPACE=/home/ct/code/ct_i915
+export PCILOC=0000:00:02.00
+export PCIID=8086:a780
 export DefaultGVTMODE=1

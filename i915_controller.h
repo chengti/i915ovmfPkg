@@ -82,9 +82,9 @@ struct opregion_asle
 	UINT64 fdss;
 	UINT32 fdsp;
 	UINT32 stat;
-	UINT64 rvda; /* Physical (2.0) or relative from opregion (2.1+)
-			 * address of raw VBT data. */
-	UINT32 rvds; /* Size of raw vbt data */
+	UINT64 rvda;     /* Physical (2.0) or relative from opregion (2.1+)
+					  * address of raw VBT data. */
+	UINT32 rvds;     /* Size of raw vbt data */
 	UINT8 rsvd[58];
 } __packed;
 
