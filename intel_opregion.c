@@ -720,6 +720,10 @@ static void parse_ddi_port(i915_CONTROLLER *controller,
 	struct ddi_vbt_port_info *info;
 	BOOLEAN is_dvi, is_hdmi, is_dp, is_edp, is_crt;
 	enum port port;
+	
+	if (!child->device_type)
+		return;
+
 	port = dvo_port_to_port(controller, child->dvo_port);
 	if (port == PORT_NONE)
 		return;
@@ -762,8 +766,8 @@ static void parse_ddi_port(i915_CONTROLLER *controller,
 		info->supports_tbt = child->tbt;
 
 	PRINT_DEBUG(EFI_D_ERROR,
-				"Port %c VBT info: CRT:%d DVI:%d HDMI:%d DP:%d eDP:%d USB-Type-C:%d TBT:%d type:%04x\n",
-				port_name(port), is_crt, is_dvi, is_hdmi, is_dp, is_edp,
+				"A:== Port %c(raw port num: %d) VBT info: CRT:%d DVI:%d HDMI:%d DP:%d eDP:%d USB-Type-C:%d TBT:%d type:%04x\n",
+				port_name(port), child->dvo_port, is_crt, is_dvi, is_hdmi, is_dp, is_edp,
 				info->supports_typec_usb, info->supports_tbt, child->device_type);
 
 	if (is_dvi)

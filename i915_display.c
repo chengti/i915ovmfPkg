@@ -326,12 +326,14 @@ static BOOLEAN isCurrentPortPresent(enum port port, UINT32 found)
     switch (port)
     {
     case PORT_A:
-
-        return controller->read32(DDI_BUF_CTL(PORT_A)) && DDI_INIT_DISPLAY_DETECTED;
+        //return controller->read32(DDI_BUF_CTL(PORT_A)) && DDI_INIT_DISPLAY_DETECTED;
+        return false;
     case PORT_B:
-        return found & SFUSE_STRAP_DDIB_DETECTED;
+        //return found & SFUSE_STRAP_DDIB_DETECTED;
+        return true;
     case PORT_C:
         return found & SFUSE_STRAP_DDIC_DETECTED;
+        //return true;
     case PORT_D:
         return found & SFUSE_STRAP_DDID_DETECTED;
     default:
@@ -371,16 +373,31 @@ static EFI_STATUS setOutputPath(i915_CONTROLLER *controller, UINT32 found)
         }
         return EFI_NOT_FOUND;
     }
+    PRINT_DEBUG(EFI_D_ERROR, "controller->opRegion->numChildren: %d \n", controller->opRegion->numChildren);
+
     for (int i = 0; i < controller->opRegion->numChildren; i++)
     {
-        EDID *result;
+        //EDID *result;
 
         struct ddi_vbt_port_info ddi_port_info = controller->vbt.ddi_port_info[i];
 
+        if(!ddi_port_info.child)
+        {
+            PRINT_DEBUG(EFI_D_ERROR, "child Invalid!!! numChildren: %d controller->opRegion->numChildren:%d \n", i, controller->opRegion->numChildren);
+            continue;
+        }
+        if(!ddi_port_info.child->device_type)
+        {
+            PRINT_DEBUG(EFI_D_ERROR, "device_type: 0x%x \n", ddi_port_info.child->device_type);
+            continue;
+        }
+        if(i > 5)
+        break;
+
         PRINT_DEBUG(EFI_D_ERROR,
-                    "Port %c VBT info: DVI:%d HDMI:%d DP:%d eDP:%d\n",
-                    port_name(ddi_port_info.port), ddi_port_info.supports_dvi,
-                    ddi_port_info.supports_hdmi, ddi_port_info.supports_dp, ddi_port_info.supports_edp);
+                    "B:==  Port %c port enum num: %d VBT info: DVI:%d HDMI:%d DP:%d eDP:%d (childnum:%d)\n",
+                    port_name(ddi_port_info.port), ddi_port_info.port, ddi_port_info.supports_dvi,
+                    ddi_port_info.supports_hdmi, ddi_port_info.supports_dp, ddi_port_info.supports_edp,controller->opRegion->numChildren);
         // UINT32* port = &controller->OutputPath.Port;
         if (!isCurrentPortPresent(ddi_port_info.port, found))
         {
@@ -388,7 +405,8 @@ static EFI_STATUS setOutputPath(i915_CONTROLLER *controller, UINT32 found)
             continue;
         }
         PRINT_DEBUG(EFI_D_ERROR, "Port Is Connected!\n");
-
+        PRINT_DEBUG(EFI_D_ERROR, "aaa: controller->opRegion->numChildren: %d \n", controller->opRegion->numChildren);
+#if 1
         if (ddi_port_info.supports_dp || ddi_port_info.supports_edp)
         {
 	    struct intel_dp intel_dp = {};
@@ -398,44 +416,49 @@ static EFI_STATUS setOutputPath(i915_CONTROLLER *controller, UINT32 found)
             {
                 Status = SetupPPS(controller);
             }
-
+        PRINT_DEBUG(EFI_D_ERROR, "bbb: controller->opRegion->numChildren: %d \n", controller->opRegion->numChildren);
             enum aux_ch portAux = intel_bios_port_aux_ch(controller, ddi_port_info.port);
             PRINT_DEBUG(EFI_D_ERROR, "Port is DP/EdP. Aux_ch is %d \n", portAux);
+        PRINT_DEBUG(EFI_D_ERROR, "ccc: controller->opRegion->numChildren: %d \n", controller->opRegion->numChildren);
+            //Status = ReadEDIDDP(result, controller, portAux);
+            //PRINT_DEBUG(EFI_D_ERROR, "ReadEDIDDP returned %d \n", Status);
 
-            Status = ReadEDIDDP(result, controller, portAux);
-            PRINT_DEBUG(EFI_D_ERROR, "ReadEDIDDP returned %d \n", Status);
-
+            Status = EFI_SUCCESS;
             if (!Status)
             {
 
                 controller->OutputPath.ConType = ddi_port_info.port == PORT_A ? eDP : DPSST;
                 controller->OutputPath.DPLL = 1;
-                controller->edid = *result;
+                //controller->edid = *result;
                 controller->OutputPath.Port = ddi_port_info.port;
-                PRINT_DEBUG(EFI_D_ERROR, "DUsing Connector Mode: %d, On Port %d", controller->OutputPath.ConType, controller->OutputPath.Port);
+                PRINT_DEBUG(EFI_D_ERROR, "DUsing Connector Mode: %d, On Port %d \n", controller->OutputPath.ConType, controller->OutputPath.Port);
 
                 return Status;
             }
+            else
+                PRINT_DEBUG(EFI_D_ERROR, "ReadEDIDDP Error: controller->opRegion->numChildren: %d \n", controller->opRegion->numChildren);
         }
         if (ddi_port_info.supports_dvi || ddi_port_info.supports_hdmi)
         {
             PRINT_DEBUG(EFI_D_ERROR, "Port is HDMI. GMBUS Pin is %d \n", ddi_port_info.alternate_ddc_pin);
 
-            Status = ReadEDIDHDMI(result, controller, ddi_port_info.alternate_ddc_pin);
-            PRINT_DEBUG(EFI_D_ERROR, "ReadEDIDHDMI returned %d \n", Status);
-
+            //Status = ReadEDIDHDMI(result, controller, ddi_port_info.alternate_ddc_pin);
+            //PRINT_DEBUG(EFI_D_ERROR, "ReadEDIDHDMI returned %d \n", Status);
+            Status = EFI_SUCCESS;
             if (!Status)
             {
                 controller->OutputPath.ConType = HDMI;
                 controller->OutputPath.DPLL = 1;
-                controller->edid = *result;
+                //controller->edid = *result;
 
                 controller->OutputPath.Port = ddi_port_info.port;
-                PRINT_DEBUG(EFI_D_ERROR, "HUsing Connector Mode: %d, On Port %d", controller->OutputPath.ConType, controller->OutputPath.Port);
+                PRINT_DEBUG(EFI_D_ERROR, "HUsing Connector Mode: %d, On Port %d \n", controller->OutputPath.ConType, controller->OutputPath.Port);
 
                 return Status;
             }
         }
+ #endif
+
     }
     /*
     DDI_BUF_CTL_A bit 0 detects presence of DP for DDIA/eDP
@@ -793,6 +816,7 @@ EFI_STATUS DisplayInit(i915_CONTROLLER *iController)
             ((UINT8 *)&controller->edid)[i] = edid_fallback[i];
         }
     }
+
     /*  if (EFI_ERROR(Status))
     {
         PRINT_DEBUG(EFI_D_ERROR,"failed to read EDID\n");
